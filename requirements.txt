@@ -1,0 +1,14 @@
+# 财务数据提取程序依赖
+# 安装命令: pip install -r requirements.txt
+
+# GUI框架 - Tkinter是Python内置的，无需安装
+# tkinter
+
+# PDF处理
+pdfplumber>=0.10.0
+
+# 数据处理
+pandas>=2.0.0
+
+# Excel导出
+openpyxl>=3.1.0
