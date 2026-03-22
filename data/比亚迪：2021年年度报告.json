@@ -1,0 +1,32 @@
+{
+  "source_file": "比亚迪：2021年年度报告.pdf",
+  "extract_time": "2026-03-22 23:39:55",
+  "data": {
+    "资产负债表": {
+      "parent": {},
+      "consolidated": {}
+    },
+    "现金流量表": {
+      "parent": {},
+      "consolidated": {}
+    },
+    "利润表": {
+      "parent": {},
+      "consolidated": {}
+    }
+  },
+  "item_order": {
+    "资产负债表": {
+      "parent": [],
+      "consolidated": []
+    },
+    "现金流量表": {
+      "parent": [],
+      "consolidated": []
+    },
+    "利润表": {
+      "parent": [],
+      "consolidated": []
+    }
+  }
+}

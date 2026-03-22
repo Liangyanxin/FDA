@@ -83,7 +83,7 @@ class FinancialDataExtractor:
         if not self.pdf_path:
             messagebox.showwarning("警告", "请先选择PDF文件！")
             return
-            
+        
         self.status_label.config(text="正在提取数据...")
         self.root.update()
         
@@ -226,7 +226,12 @@ class FinancialDataExtractor:
                                 row = [item]
                                 for i in range(max_cols):
                                     val = values[i] if i < len(values) else None
-                                    row.append(f"{val:,.2f}" if val is not None else "")
+                                    if val is not None and isinstance(val, (int, float)):
+                                        row.append(f"{val:,.2f}")
+                                    elif val is not None:
+                                        row.append(str(val))
+                                    else:
+                                        row.append("")
                                 rows.append(row)
                             
                             col_names = ["科目"] + [f"列{i+1}" for i in range(max_cols)]
@@ -256,7 +261,10 @@ class FinancialDataExtractor:
                         parent_val = parent_vals[col_index] if col_index < len(parent_vals) else None
                         consolidated_val = consolidated_vals[col_index] if col_index < len(consolidated_vals) else None
                         
-                        diff = (consolidated_val - parent_val) if (parent_val and consolidated_val) else None
+                        diff = None
+                        if (parent_val is not None and consolidated_val is not None and
+                            isinstance(parent_val, (int, float)) and isinstance(consolidated_val, (int, float))):
+                            diff = consolidated_val - parent_val
                         
                         summary_rows.append({
                             '报表类型': report_type,

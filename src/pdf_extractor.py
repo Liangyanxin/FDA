@@ -32,12 +32,15 @@ class PDFExtractor:
             # 资产负债表
             ("合并资产负债表", "合并资产负债表", "consolidated", "资产负债表"),
             ("母公司资产负债表", "母公司资产负债表", "parent", "资产负债表"),
+            # ("1、合并年初到报告期末的资产负债表", "合并资产负债表", "consolidated", "资产负债表"),
             # 利润表
             ("合并利润表", "合并利润表", "consolidated", "利润表"),
             ("母公司利润表", "母公司利润表", "parent", "利润表"),
+            # ("2、合并年初到报告期末的利润表", "合并利润表", "consolidated", "利润表"),
             # 现金流量表
             ("合并现金流量表", "合并现金流量表", "consolidated", "现金流量表"),
             ("母公司现金流量表", "母公司现金流量表", "parent", "现金流量表"),
+            # ("3、合并年初到报告期末的现金流量表", "合并现金流量表", "consolidated", "现金流量表")
         ]
         
         # 排除关键词
@@ -123,7 +126,7 @@ class PDFExtractor:
         
         # 直接检查每一行，移除换行符后匹配
         for row in table:
-            if not row or len(row) < 1:
+            if not row or len(row) < 2:
                 continue
             item_name = str(row[0]).strip() if row[0] else ''
             # 移除所有换行符和空格
@@ -169,7 +172,7 @@ class PDFExtractor:
     
     def _extract_table_data(self, table, data, item_order, report_type, company_type):
         """提取表格数据"""
-        if not table or len(table) < 1:
+        if not table or len(table) < 2:
             return
         
         # 初始化
@@ -182,7 +185,7 @@ class PDFExtractor:
         if company_type not in item_order[report_type]:
             item_order[report_type][company_type] = []
         
-        # 识别表头和数据起始列
+        # 识别表头
         headers = table[0]
         
         # 判断第一行是否为表头
@@ -192,21 +195,15 @@ class PDFExtractor:
         header_keywords = ["项目", "科目", "行次"]
         is_header_row = first_col in header_keywords or first_col == ""
         
-        # 判断是否有"附注"列
-        data_col_start = 2  # 默认从第2列开始（跳过项目名列）
-        # for i, h in enumerate(headers):
-        #     if h and '附注' in str(h):
-        #         data_col_start = i + 1
-        #         break
-        
         # 如果第一行是表头，跳过它；否则从第0行开始
         data_rows = table[1:] if is_header_row else table
         
-        # 提取数据
+        # 提取数据 - 读取所有列（包括附注列）
         for row in data_rows:
-            if not row or len(row) < 2:
+            if not row or len(row) < 1:
                 continue
             
+            # 项目名称从第0列获取
             item_name = str(row[0]).strip() if row[0] else ''
             clean_name = item_name.replace('\n', '').replace('\r', '').replace(' ', '')
             
@@ -214,13 +211,14 @@ class PDFExtractor:
             if clean_name in ["项目", "科目", "行次", "None"]:
                 continue
             
-            # 清理
+            # 清理项目名称
             item_name = RE_NUMERIC_START.sub('', str(item_name))
             item_name = item_name.replace('\n', '').replace('\r', '').strip()
             
-            # 提取数值
+            # 提取所有列的内容（包括附注列）
+            # row[0] 是项目名称，row[1] 是附注列（如果有），row[2:] 是数据列
             values = []
-            for cell in row[data_col_start:]:
+            for cell in row[1:]:  # 从第1列开始（包含附注列），读取所有列
                 if cell:
                     cell_str = str(cell).strip()
                     cell_str = re.sub(r'[\s,\-–—]', '', cell_str)
@@ -228,7 +226,7 @@ class PDFExtractor:
                         try:
                             values.append(float(cell_str))
                         except:
-                            values.append(None)
+                            values.append(None)  # 无法转换为数值的设为 None
                     else:
                         values.append(None)
                 else:

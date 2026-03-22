@@ -56,7 +56,7 @@ class ViewUpdater:
         self.update_raw_table_list()
     
     def _infer_headers_from_data(self):
-        """从已提取的数据中推断年份表头"""
+        """从已提取的数据中推断年份表头 - 动态生成"""
         headers = {}
         
         for report_type in self.app.data:
@@ -69,16 +69,14 @@ class ViewUpdater:
                             max_cols = max(max_cols, len(values))
                     
                     if max_cols > 0:
-                        if max_cols >= 2:
-                            year_list = ["2024年", "2023年"]
-                        else:
-                            year_list = [f"列{i+1}" for i in range(max_cols)]
+                        # 动态生成列名
+                        year_list = [f"列{i+1}" for i in range(max_cols)]
                         headers[(report_type, company_type)] = year_list
         
         return headers
     
     def extract_year_headers(self):
-        """从表格中提取年份表头"""
+        """从表格中提取年份表头 - 动态获取所有列（包括附注列）"""
         headers = {}
         
         for table_info in self.app.all_raw_tables:
@@ -90,16 +88,20 @@ class ViewUpdater:
                 header_row = table[0]
                 year_list = []
                 
-                data_col_start = 1
-                for i, header in enumerate(header_row):
-                    if header and '附注' in str(header):
-                        data_col_start = i + 1
-                        break
+                # 动态获取实际的列数（跳过第一列的项目名）
+                actual_col_count = len(header_row) - 1
                 
-                for cell in header_row[data_col_start:]:
+                # 从第1列开始获取所有表头（包括附注列）
+                for i in range(1, len(header_row)):
+                    cell = header_row[i]
                     if cell:
                         cell_str = str(cell).strip()
                         if not cell_str:
+                            continue
+                        
+                        # 检查是否是附注列
+                        if '附注' in cell_str:
+                            year_list.append('附注')
                             continue
                         
                         years = re.findall(r'20\d{2}', cell_str)
@@ -111,6 +113,10 @@ class ViewUpdater:
                             year_list.append('本期')
                         elif cell_str and len(cell_str) < 15:
                             year_list.append(cell_str)
+                
+                # 如果没有找到年份表头，使用动态生成的列名
+                if not year_list and actual_col_count > 0:
+                    year_list = [f"列{i}" for i in range(1, actual_col_count + 1)]
                 
                 if year_list:
                     key = (report_type, company_type)
@@ -136,10 +142,13 @@ class ViewUpdater:
         
         header_key = (report_type, company_type)
         saved_headers = getattr(self.app, 'table_headers', {})
-        if header_key in saved_headers:
+        
+        # 动态获取列描述，确保与实际列数匹配
+        if header_key in saved_headers and len(saved_headers[header_key]) == max_cols:
             col_description = saved_headers[header_key]
         else:
-            col_description = ["2024年", "2023年"] if max_cols >= 2 else [f"列{i+1}" for i in range(max_cols)]
+            # 动态生成列名
+            col_description = [f"列{i+1}" for i in range(max_cols)] if max_cols > 0 else []
         
         tree.delete(*tree.get_children())
         
@@ -164,7 +173,12 @@ class ViewUpdater:
                 for i in range(len(header_years)):
                     if i < len(values):
                         val = values[i]
-                        val_str = f"{val:,.2f}" if val is not None else ""
+                        if val is not None and isinstance(val, (int, float)):
+                            val_str = f"{val:,.2f}"
+                        elif val is not None:
+                            val_str = str(val)
+                        else:
+                            val_str = ""
                     else:
                         val_str = ""
                     row.append(val_str)
@@ -225,14 +239,26 @@ class ViewUpdater:
             parent_val = parent_vals[col_index] if col_index < len(parent_vals) else None
             consolidated_val = consolidated_vals[col_index] if col_index < len(consolidated_vals) else None
             
-            if parent_val is not None and consolidated_val is not None:
+            if (parent_val is not None and consolidated_val is not None and 
+                isinstance(parent_val, (int, float)) and isinstance(consolidated_val, (int, float))):
                 diff = consolidated_val - parent_val
                 diff_str = f"{diff:+,.2f}"
             else:
                 diff_str = ""
                 
-            parent_str = f"{parent_val:,.2f}" if parent_val is not None else ""
-            consolidated_str = f"{consolidated_val:,.2f}" if consolidated_val is not None else ""
+            if parent_val is not None and isinstance(parent_val, (int, float)):
+                parent_str = f"{parent_val:,.2f}"
+            elif parent_val is not None:
+                parent_str = str(parent_val)
+            else:
+                parent_str = ""
+                
+            if consolidated_val is not None and isinstance(consolidated_val, (int, float)):
+                consolidated_str = f"{consolidated_val:,.2f}"
+            elif consolidated_val is not None:
+                consolidated_str = str(consolidated_val)
+            else:
+                consolidated_str = ""
             
             tree.insert("", tk.END, values=[item, parent_str, consolidated_str, diff_str])
     
